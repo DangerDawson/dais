@@ -49,7 +49,11 @@ module Dais
         dep_params[key] = value
       end
 
-      define_method(:expand) do |*construct_args|
+      define_singleton_method(:get_deps) do
+        dep_params
+      end
+
+    define_method(:expand) do |*construct_args|
         expand = construct_args.dup
         merge = expand[-1].class == Hash ? expand.pop : {}
         expand.inject({}) do |hash, arg|

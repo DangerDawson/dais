@@ -5,7 +5,7 @@ module Dais
   end
 
   def self.define_inputs(klass)
-    klass.define_singleton_method(:inputs) do |*args|
+    klass.define_singleton_method(:inputs) do |*args, &inputs_block|
       required = args.dup
       optional = required[-1].class == Hash ? required.pop : {}
 
@@ -44,16 +44,7 @@ module Dais
         end
       end
 
-      dep_params = {}
-      define_singleton_method(:dep) do |key, value|
-        dep_params[key] = value
-      end
-
-      define_singleton_method(:get_deps) do
-        dep_params
-      end
-
-    define_method(:expand) do |*construct_args|
+      define_method(:expand) do |*construct_args|
         expand = construct_args.dup
         merge = expand[-1].class == Hash ? expand.pop : {}
         expand.inject({}) do |hash, arg|
@@ -69,10 +60,25 @@ module Dais
         self.class.__send__(:private, key)
       end
 
-      define_method(:initialize) do |**initialize_args|
-        combined = dep_params.merge(optional.merge(initialize_args))
-        combined.each { |key, value| param(key, value) }
+      initialize_merged_args = {}
+      dep_params = {}
+      define_method(:dep) do |key, value|
+        dep_params[key] = initialize_merged_args[key] || value
+        param(key, dep_params[key])
+      end
 
+      define_method(:get_deps) do
+        dep_params.inject({}) do |hash, key_value|
+          key, value = key_value
+          hash[key] = value
+          hash
+        end
+      end
+
+      define_method(:initialize) do |**initialize_args|
+        optional.merge(initialize_args).each { |key, value| param(key, value) }
+        initialize_merged_args = optional.merge(initialize_args)
+        self.instance_eval(&inputs_block) if inputs_block
         missing = (required - initialize_args.keys).uniq
         if missing.any?
           message = "class: #{self.class}, missing keyword(s): #{missing.join(', ')}"

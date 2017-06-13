@@ -1,10 +1,10 @@
 require 'spec_helper'
 RSpec.describe Dais do
   let(:inputs) { [:one, two: 2] }
-  let(:call_args) { {one: 1} }
+  let(:call_args) { { one: 1 } }
 
   let(:klass_eval) do
-    proc do |input_args, &block|
+    proc do |input_args|
       Class.new do
         include Dais
         inputs(*input_args)
@@ -15,17 +15,17 @@ RSpec.describe Dais do
     end
   end
 
-  describe "get_deps" do
+  describe 'get_deps' do
     let!(:klass) { klass_eval.call(inputs) }
     let(:get_deps) { klass.new(call_args).get_deps }
-    it "returns no dependencies" do
-      expected = { }
+    it 'returns no dependencies' do
+      expected = {}
       expect(get_deps).to eq expected
     end
 
-    context "with a dep" do
+    context 'with a dep' do
       let(:klass_eval) do
-        proc do |input_args, dep_one, &block|
+        proc do |input_args, dep_one|
           Class.new do
             include Dais
             inputs(*input_args) do
@@ -55,49 +55,49 @@ RSpec.describe Dais do
       let!(:klass) { klass_eval.call(inputs, dep_arg) }
       let(:dep_arg) { -> { dep } }
 
-      it "returns a dependency" do
+      it 'returns a dependency' do
         expected = { dep_one: dep }
         expect(get_deps).to eq expected
       end
 
-      context "with a dep that is passed in via the call" do
+      context 'with a dep that is passed in via the call' do
         let(:another_dep) { proc { |params| params[:three] * 100 } }
         before do
           dep_one_params = { dep_one: another_dep }
           call_args.merge!(dep_one_params)
         end
-        it "calculates the correct amount" do
+        it 'calculates the correct amount' do
           expected = { dep_one: another_dep }
           expect(get_deps).to eq expected
         end
       end
 
-      context "with a dep that is curried and passed in via the call" do
+      context 'with a dep that is curried and passed in via the call' do
         let(:another_dep) { dep.curry.call(four: 100) }
         before do
           call_args.merge!(dep_one: another_dep)
         end
-        it "calculates the correct amount" do
+        it 'calculates the correct amount' do
           expected = { dep_one: another_dep }
           expect(get_deps).to eq expected
         end
       end
 
-      context "with a dep that is curried" do
+      context 'with a dep that is curried' do
         let(:another_dep) { dep.curry.call(four: 100) }
         let(:dep_arg) { -> { another_dep } }
 
-        it "calculates the correct amount" do
+        it 'calculates the correct amount' do
           expected = { dep_one: another_dep }
           expect(get_deps).to eq expected
         end
       end
 
-      context "with a dep that needs to be lazy loaded" do
+      context 'with a dep that needs to be lazy loaded' do
         let(:another_dep) { proc { |params| params[:three] * 2 } }
         let(:dep_arg) { -> { another_dep } }
 
-        it "calculates the correct amount" do
+        it 'calculates the correct amount' do
           expected = { dep_one: another_dep }
           expect(get_deps).to eq expected
         end
@@ -105,18 +105,25 @@ RSpec.describe Dais do
     end
   end
 
-  describe "call" do
+  describe 'call' do
     let!(:klass) { klass_eval.call(inputs) }
-    subject { klass.call(call_args) }
 
-    it "calculates the correct amount" do
-      # 1 * 2 
-      expect(subject).to eq  2
+    it 'calculates the correct amount' do
+      # 1 * 2
+      expect(klass.call(call_args)).to eq 2
     end
 
-    context "with a dep" do
+    context "with curry" do
+      it 'calculates the correct amount' do
+        curried = klass.curry.call(two: 10)
+        result = curried.call(one: 2)
+        expect(result).to eq 20
+      end
+    end
+
+    context 'with a dep' do
       let(:klass_eval) do
-        proc do |input_args, dep_one, &block|
+        proc do |input_args, dep_one|
           Class.new do
             include Dais
             inputs(*input_args) do
@@ -146,51 +153,50 @@ RSpec.describe Dais do
       let!(:klass) { klass_eval.call(inputs, dep_arg) }
       let(:dep_arg) { -> { dep } }
 
-      it "calculates the correct amount" do
+      it 'calculates the correct amount' do
         # 24 * 1 * 4
-        expect(klass.call(call_args)).to eq  96
+        expect(klass.call(call_args)).to eq 96
       end
 
-      context "with a dep that is passed in via the call" do
+      context 'with a dep that is passed in via the call' do
         before do
-          dep_one_params = { dep_one: proc { |params| params[:three] * 100  } }
+          dep_one_params = { dep_one: proc { |params| params[:three] * 100 } }
           call_args.merge!(dep_one_params)
         end
-        it "calculates the correct amount" do
+        it 'calculates the correct amount' do
           expect(klass.call(call_args)).to eq 100
         end
       end
 
-      context "with a dep that is curried and passed in via the call" do
+      context 'with a dep that is curried and passed in via the call' do
         before do
           call_args.merge!(dep_one: dep.curry.call(four: 100))
         end
-        it "calculates the correct amount" do
+        it 'calculates the correct amount' do
           expect(klass.call(call_args)).to eq  2400
         end
       end
 
-      context "with a dep that is curried" do
+      context 'with a dep that is curried' do
         let(:dep_arg) { -> { dep.curry.call(four: 100) } }
 
-        it "calculates the correct amount" do
+        it 'calculates the correct amount' do
           # 24 * 1 * 100
           expect(klass.call(call_args)).to eq  2400
         end
       end
 
-      context "with a dep that needs to be lazy loaded" do
-        let(:dep_arg) { -> { proc { |params| params[:three] * 2 }  } }
+      context 'with a dep that needs to be lazy loaded' do
+        let(:dep_arg) { -> { proc { |params| params[:three] * 2 } } }
 
-        it "calculates the correct amount" do
+        it 'calculates the correct amount' do
           expect(klass.call(call_args)).to eq  2
         end
       end
 
-      context "with a dep that takes a param from the inputs" do
-
+      context 'with a dep that takes a param from the inputs' do
         let(:klass_eval) do
-          proc do |input_args, &block|
+          proc do |input_args|
             Class.new do
               include Dais
               inputs(*input_args) do
@@ -204,15 +210,15 @@ RSpec.describe Dais do
         end
         let!(:klass) { klass_eval.call(inputs) }
 
-        it "calculates the correct amount" do
-          expect(klass.call(call_args)).to eq  2
+        it 'calculates the correct amount' do
+          expect(klass.call(call_args)).to eq 2
         end
       end
     end
 
-    context "with a dep that takes a param from another dep" do
+    context 'with a dep that takes a param from another dep' do
       let(:klass_eval) do
-        proc do |input_args, &block|
+        proc do |input_args|
           Class.new do
             include Dais
             inputs(*input_args) do
@@ -227,13 +233,40 @@ RSpec.describe Dais do
       end
       let!(:klass) { klass_eval.call(inputs) }
 
-      it "calculates the correct amount" do
-        expect(klass.call(call_args)).to eq  8
+      it 'calculates the correct amount' do
+        expect(klass.call(call_args)).to eq 8
+      end
+    end
+
+    context 'with a block' do
+      let(:klass_eval) do
+        proc do |input_args|
+          Class.new do
+            include Dais
+            inputs(*input_args)
+            def call
+              yield * one * two
+            end
+          end
+        end
+      end
+
+      it 'calculates the correct amount' do
+        result = klass.call(call_args) { 5 }
+        expect(result).to eq 10
+      end
+
+      context "curry with a block" do
+        it 'calculates the correct amount' do
+          curried = klass.curry.call(two: 10)
+          result = curried.call(one: 2) { 5 }
+          expect(result).to eq 100
+        end
       end
     end
   end
 
-  context "dep called outside the block" do
+  context 'dep called outside the block' do
     let(:klass_eval) do
       proc do |input_args|
         Class.new do
@@ -244,8 +277,30 @@ RSpec.describe Dais do
       end
     end
 
-    it "calculates the correct amount" do
+    it 'calculates the correct amount' do
       expect { klass_eval.call(inputs) }.to raise_error(NoMethodError)
+    end
+  end
+
+  describe "expand" do
+    let(:klass_eval) do
+      proc do |input_args|
+        Class.new do
+          include Dais
+          inputs(*input_args) do
+            dep :dep_one, "foobar"
+          end
+          def call
+            expand(:one, :two, :dep_one, another: "another")
+          end
+        end
+      end
+    end
+    let!(:klass) { klass_eval.call(inputs) }
+
+    it 'calculates the correct amount' do
+       expected = { one: 1, two: 2, dep_one: "foobar", another: "another"}
+      expect(klass.call(call_args)).to eq expected
     end
   end
 end

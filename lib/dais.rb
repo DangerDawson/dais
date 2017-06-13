@@ -10,7 +10,7 @@ module Dais
       optional = required[-1].class == Hash ? required.pop : {}
 
       define_singleton_method(:incomplete?) do |params|
-        !((params.keys & required).size == required.size)
+        (params.keys & required).size != required.size
       end
 
       currier = proc do |params, &currier_block|
@@ -47,9 +47,8 @@ module Dais
       define_method(:expand) do |*construct_args|
         expand = construct_args.dup
         merge = expand[-1].class == Hash ? expand.pop : {}
-        expand.inject({}) do |hash, arg|
+        expand.each_with_object({}) do |arg, hash|
           hash[arg] = send(arg)
-          hash
         end.merge(merge)
       end
 
@@ -68,17 +67,16 @@ module Dais
       end
 
       define_method(:get_deps) do
-        dep_params.inject({}) do |hash, key_value|
+        dep_params.each_with_object({}) do |key_value, hash|
           key, value = key_value
           hash[key] = value
-          hash
         end
       end
 
       define_method(:initialize) do |**initialize_args|
         optional.merge(initialize_args).each { |key, value| param(key, value) }
         initialize_merged_args = optional.merge(initialize_args)
-        self.instance_eval(&inputs_block) if inputs_block
+        instance_eval(&inputs_block) if inputs_block
         missing = (required - initialize_args.keys).uniq
         if missing.any?
           message = "class: #{self.class}, missing keyword(s): #{missing.join(', ')}"

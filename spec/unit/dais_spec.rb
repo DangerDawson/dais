@@ -113,6 +113,28 @@ RSpec.describe Dais do
       expect(klass.call(call_args)).to eq 2
     end
 
+    context "with no arguments" do
+      let!(:klass) { klass_eval.call }
+
+      let(:klass_eval) do
+        proc do
+          Class.new do
+            include Dais
+            inputs
+            def call
+              :foo
+            end
+          end
+        end
+      end
+
+      let(:inputs) {[]}
+
+      it 'calculates the correct amount' do
+        expect(klass.call).to eq :foo
+      end
+    end
+
     context "with curry" do
       it 'calculates the correct amount' do
         curried = klass.curry.call(two: 10)

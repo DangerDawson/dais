@@ -35,7 +35,7 @@ module Dais
         end
       end
 
-      define_singleton_method(:call) do |params, &call_block|
+      define_singleton_method(:call) do |params={}, &call_block|
         params = optional.merge(params)
         if call_block
           new(params).call(&call_block)
